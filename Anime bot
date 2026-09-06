@@ -1,4 +1,5 @@
-main.pyimport os
+main.py
+import os
 import logging
 
 from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup
@@ -31,9 +32,6 @@ ANIME_LIST = [
     "My Hero Academia",
     "Tokyo Revengers",
     "Solo Leveling",
-]
-
-
 def main_menu():
     return InlineKeyboardMarkup([
         [
@@ -66,30 +64,31 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
         "👇 Apna option select karo.",
         parse_mode="HTML",
         reply_markup=main_menu(),
-    )
-
-
-async def button_handler(
+    )async def button_handler(
     update: Update,
     context: ContextTypes.DEFAULT_TYPE
 ):
     query = update.callback_query
     await query.answer()
 
-    if query.data == "anime":
-        keyboard = []
+    data = query.data
+
+    if data == "anime":
+        context.user_data["search_mode"] = False
+
+        buttons = []
 
         for anime in ANIME_LIST:
-            keyboard.append([
+            buttons.append([
                 InlineKeyboardButton(
                     f"🎬 {anime}",
-                    callback_data="info_" + anime
+                    callback_data=f"anime_{anime}"
                 )
             ])
 
-        keyboard.append([
+        buttons.append([
             InlineKeyboardButton(
-                "🔙 Back",
+                "⬅️ Back",
                 callback_data="back"
             )
         ])
@@ -98,93 +97,79 @@ async def button_handler(
             "🇮🇳 <b>Hindi Dubbed Anime</b>\n\n"
             "👇 Anime select karo:",
             parse_mode="HTML",
-            reply_markup=InlineKeyboardMarkup(keyboard),
+            reply_markup=InlineKeyboardMarkup(buttons),
         )
 
-    elif query.data == "search":
+    elif data == "search":
         context.user_data["search_mode"] = True
 
         await query.edit_message_text(
-            "🔎 <b>Anime Search</b>\n\n"
-            "Anime ka naam message me bhejo.\n\n"
+            "🔎 <b>Search Anime</b>\n\n"
+            "Anime ka naam bhejo.\n\n"
             "Example: <code>Naruto</code>",
             parse_mode="HTML",
             reply_markup=InlineKeyboardMarkup([
                 [
                     InlineKeyboardButton(
-                        "🔙 Back",
+                        "⬅️ Back",
                         callback_data="back"
                     )
                 ]
             ]),
-        )
-
-    elif query.data == "about":
-        keyboard = [
-            [
-                InlineKeyboardButton(
-                    "👑 Owner",
-                    url="https://t.me/Mr_Giyu07"
-                )
-            ],
-            [
-                InlineKeyboardButton(
-                    "👨‍💻 Developer",
-                    url="https://t.me/Dr_Doom06"
-                )
-            ],
-            [
-                InlineKeyboardButton(
-                    "🔙 Back",
-                    callback_data="back"
-                )
-            ],
-        ]
-
-        await query.edit_message_text(
-            "ℹ️ <b>ABOUT BOT</b>\n\n"
-            f"👑 Owner : @{OWNER}\n"
-            f"👨‍💻 Developer : @{DEVELOPER}\n\n"
-            "🇮🇳 Hindi Dubbed Anime Catalog Bot",
-            parse_mode="HTML",
-            reply_markup=InlineKeyboardMarkup(keyboard),
-        )
-
-    elif query.data == "back":
+        ) 
+elif data == "about":
         context.user_data["search_mode"] = False
 
         await query.edit_message_text(
-            "🏠 <b>Main Menu</b>\n\n"
-            "👇 Option select karo.",
-            parse_mode="HTML",
-            reply_markup=main_menu(),
-        )
-
-    elif query.data.startswith("info_"):
-        anime_name = query.data[5:]
-
-        await query.edit_message_text(
-            f"🎬 <b>{anime_name}</b>\n\n"
-            "🇮🇳 Hindi Dubbed Catalog\n\n"
-            "ℹ️ Anime catalog information.",
+            "ℹ️ <b>About Anime Bot</b>\n\n"
+            "🎌 Hindi Dubbed Anime Catalog Bot\n\n"
+            f"👑 <b>Owner:</b> {OWNER}\n"
+            f"👨‍💻 <b>Developer:</b> {DEVELOPER}\n\n"
+            f"🔗 Owner: @{OWNER}\n"
+            f"🔗 Developer: @{DEVELOPER}",
             parse_mode="HTML",
             reply_markup=InlineKeyboardMarkup([
                 [
                     InlineKeyboardButton(
-                        "🔙 Anime List",
-                        callback_data="anime"
+                        f"👑 @{OWNER}",
+                        url=f"https://t.me/{OWNER}"
                     )
                 ],
-                [InlineKeyboardButton(
-                        "🏠 Main Menu",
+                [
+                    InlineKeyboardButton(
+                        f"👨‍💻 @{DEVELOPER}",
+                        url=f"https://t.me/{DEVELOPER}"
+                    )
+                ],
+                [
+                    InlineKeyboardButton(
+                        "⬅️ Back",
                         callback_data="back"
                     )
                 ],
             ]),
         )
 
+    elif data == "back":
+        context.user_data["search_mode"] = False
 
-async def search_handler(
+        await query.edit_message_text(
+            "👋 <b>Welcome to Anime Bot</b>\n\n"
+            "🇮🇳 Hindi Dubbed Anime Catalog\n\n"
+            "👇 Apna option select karo.",
+            parse_mode="HTML",
+            reply_markup=main_menu(),
+        )
+elif data.startswith("anime_"):
+        anime_name = data.replace("anime_", "", 1)
+
+        await query.edit_message_text(
+            f"🎬 <b>{anime_name}</b>\n\n"
+            "🇮🇳 Hindi Dubbed Anime\n"
+            "📺 Anime selected successfully.",
+            parse_mode="HTML",
+        ) 
+async def message_handler(
     update: Update,
     context: ContextTypes.DEFAULT_TYPE
 ):
@@ -194,64 +179,49 @@ async def search_handler(
     search = update.message.text.strip().lower()
 
     results = [
-        anime
-        for anime in ANIME_LIST
+        anime for anime in ANIME_LIST
         if search in anime.lower()
-    ]
-
-    if results:
-        text = "🔎 <b>Search Results</b>\n\n"
+    ] if results:
+        buttons = []
 
         for anime in results:
-            text += f"🎬 {anime}\n"
-    else:
-        text = (
-            "❌ <b>Anime nahi mila.</b>\n\n"
+            buttons.append([
+                InlineKeyboardButton(
+                    f"🎬 {anime}",
+                    callback_data=f"anime_{anime}"
+                )
+            ])
+
+        await update.message.reply_text(
+            "🔎 <b>Search Results</b>",
+            parse_mode="HTML",
+            reply_markup=InlineKeyboardMarkup(buttons),
+        ) 
+else:
+        await update.message.reply_text(
+            "❌ Anime nahi mila.\n\n"
             "Dusra naam try karo."
         )
 
-    context.user_data["search_mode"] = False
 
-    await update.message.reply_text(
-        text,
-        parse_mode="HTML",
-        reply_markup=InlineKeyboardMarkup([
-            [
-                InlineKeyboardButton(
-                    "🇮🇳 Anime List",
-                    callback_data="anime"
-                )
-            ],
-            [
-                InlineKeyboardButton(
-                    "🏠 Main Menu",
-                    callback_data="back"
-                )
-            ],
-        ]),
-    )
-
-
-def run_bot():
+def main():
     if not BOT_TOKEN:
-        raise RuntimeError(
-            "BOT_TOKEN Railway Variables me set nahi hai."
+        raise ValueError(
+            "BOT_TOKEN missing!"
         )
 
     app = Application.builder().token(BOT_TOKEN).build()
 
     app.add_handler(
         CommandHandler("start", start)
- )
-
-    app.add_handler(
-        CallbackQueryHandler(button_handler)
     )
 
     app.add_handler(
+        CallbackQueryHandler(button_handler)
+    ) app.add_handler(
         MessageHandler(
             filters.TEXT & ~filters.COMMAND,
-            search_handler
+            message_handler
         )
     )
 
@@ -261,4 +231,4 @@ def run_bot():
 
 
 if __name__ == "__main__":
-    run_bot()
+    main()
