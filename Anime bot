@@ -32,6 +32,8 @@ ANIME_LIST = [
     "My Hero Academia",
     "Tokyo Revengers",
     "Solo Leveling",
+]
+
 def main_menu():
     return InlineKeyboardMarkup([
         [
